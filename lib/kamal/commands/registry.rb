@@ -1,7 +1,10 @@
 class Kamal::Commands::Registry < Kamal::Commands::Base
   delegate :registry, to: :config
+  delegate :local?, :local_port, to: :registry
 
   def login
+    return if local?
+
     docker :login,
       registry.server,
       "-u", sensitive(Kamal::Utils.escape_shell_value(registry.username)),
@@ -10,5 +13,19 @@ class Kamal::Commands::Registry < Kamal::Commands::Base
 
   def logout
     docker :logout, registry.server
+  end
+
+  def setup
+    combine \
+      docker(:start, "kamal-docker-registry"),
+      docker(:run, "--detach", "-p", "127.0.0.1:#{local_port}:5000", "--name", "kamal-docker-registry", "registry:2"),
+      by: "||"
+  end
+
+  def remove
+    combine \
+      docker(:stop, "kamal-docker-registry"),
+      docker(:rm, "kamal-docker-registry"),
+      by: "&&"
   end
 end
