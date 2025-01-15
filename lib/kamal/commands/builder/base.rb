@@ -13,6 +13,17 @@ class Kamal::Commands::Builder::Base < Kamal::Commands::Base
     docker :image, :rm, "--force", config.absolute_image
   end
 
+  def dev
+    dev_build_tags = build_tag_names.map { |name| "#{name}-dev" }
+
+    docker :buildx, :build,
+      "--load",
+      *platform_options(arches),
+      *([ "--builder", builder_name ] unless docker_driver?),
+      *build_options(tag_names: dev_build_tags),
+      build_context
+  end
+
   def push
     docker :buildx, :build,
       "--push",
@@ -36,8 +47,8 @@ class Kamal::Commands::Builder::Base < Kamal::Commands::Base
     docker :buildx, :inspect, builder_name unless docker_driver?
   end
 
-  def build_options
-    [ *build_tags, *build_cache, *build_labels, *build_args, *build_secrets, *build_dockerfile, *build_target, *build_ssh, *builder_provenance, *builder_sbom ]
+  def build_options(tag_names: build_tag_names)
+    [ *build_tags(tag_names), *build_cache, *build_labels, *build_args, *build_secrets, *build_dockerfile, *build_target, *build_ssh, *builder_provenance, *builder_sbom ]
   end
 
   def build_context
@@ -58,8 +69,12 @@ class Kamal::Commands::Builder::Base < Kamal::Commands::Base
   end
 
   private
-    def build_tags
-      [ "-t", config.absolute_image, "-t", config.latest_image ]
+    def build_tag_names
+      [ config.absolute_image, config.latest_image ]
+    end
+
+    def build_tags(names)
+      names.flat_map { |name| [ "-t", name ] }
     end
 
     def build_cache

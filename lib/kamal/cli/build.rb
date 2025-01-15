@@ -9,6 +9,25 @@ class Kamal::Cli::Build < Kamal::Cli::Base
     pull
   end
 
+  desc "dev", "Build development app image using the local directory as the build context"
+  def dev
+    verify_local_dependencies
+
+    uncommitted_changes = Kamal::Git.uncommitted_changes
+    if uncommitted_changes.present?
+      say "WARNING: building with uncommitted changes:\n #{uncommitted_changes}", :yellow
+    end
+
+    with_env(KAMAL.config.builder.secrets) do
+      run_locally do
+        build_and_load = KAMAL.builder.dev
+        KAMAL.with_verbosity(:debug) do
+          execute(*build_and_load)
+        end
+      end
+    end
+  end
+
   desc "push", "Build and push app image to registry"
   def push
     cli = self

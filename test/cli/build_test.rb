@@ -31,6 +31,18 @@ class CliBuildTest < CliTestCase
     end
   end
 
+  test "dev" do
+    with_build_directory do |build_directory|
+      Kamal::Commands::Hook.any_instance.stubs(:hook_exists?).returns(true)
+
+      run_command("dev", "--verbose").tap do |output|
+        assert_no_match(/Cloning repo into build directory/, output)
+        assert_match(/docker --version && docker buildx version/, output)
+        assert_match(/docker buildx build --load --platform linux\/amd64 --builder kamal-local-docker-container -t dhh\/app:999-dev -t dhh\/app:latest-dev --label service="app" --file Dockerfile \. as .*@localhost/, output)
+      end
+    end
+  end
+
   test "push resetting clone" do
     with_build_directory do |build_directory|
       stub_setup
